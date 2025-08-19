@@ -1,0 +1,8 @@
+numpy
+pandas
+polars
+tensorflow
+scikit-learn
+xgboost
+lightgbm
+shap
