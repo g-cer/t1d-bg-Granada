@@ -50,7 +50,7 @@ def resample_glucose_data(df, freq="15min", tolerance="7min"):
         start = group.index.min()
         end = group.index.max()
 
-        # Create time grid including always the last timestamp
+        # Create correct time grid
         expected = pd.date_range(start=start, end=end, freq=freq)
 
         # If the last timestamp is not included in the grid, add it

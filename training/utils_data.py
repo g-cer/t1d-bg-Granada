@@ -37,7 +37,7 @@ def load_transform(cgm_data, Patient_ID, horizons, shift_tolerance):
     cgm = cgm_data.filter(pl.col("Patient_ID") == Patient_ID)
     cgm = cgm.unique(subset="Timestamp").sort("Timestamp")
 
-    # Genera colonne lag/lead con nomi non ambigui
+    # Genera lag features e colonna target
     cgm2 = (
         cgm.clone()
         .select(["Timestamp", "Measurement"])
@@ -65,7 +65,7 @@ def load_transform(cgm_data, Patient_ID, horizons, shift_tolerance):
     out = out.drop("Measurement")
     df = out.to_pandas()
 
-    # (usa il target futuro a +30' se presente negli horizons)
+    # Usa il target futuro a +30' se presente negli horizons
     if "lead30" in df.columns:
         df["bgClass"] = df["lead30"].apply(
             lambda x: (
@@ -114,11 +114,8 @@ def get_data(
         print("Processing data from scratch...")
         # Read the single CSV file containing all patients
         cgm_data = pl.read_csv(f"{data_path}/Glucose_measurements_corrected.csv")
-
-        # Ensure Timestamp is datetime
         cgm_data = cgm_data.with_columns(pl.col("Timestamp").str.to_datetime())
 
-        # Get all unique patient IDs from the dataset
         all_subjects = (
             cgm_data.select("Patient_ID").unique().to_pandas()["Patient_ID"].tolist()
         )
@@ -136,7 +133,6 @@ def get_data(
             df = sub_df if df.empty else pd.concat([df, sub_df])
         df = df.reset_index(drop=True)
 
-        # Scegli le 8 lag e il target lead30
         lag_cols = [
             "lag105",
             "lag90",
@@ -157,7 +153,6 @@ def get_data(
             print(f"Saving processed data to cache: {cache_file}")
             df.to_parquet(cache_file, index=False)
 
-    # Scegli le 8 lag e il target lead30
     lag_cols = [
         "lag105",
         "lag90",

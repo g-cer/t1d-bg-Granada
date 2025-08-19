@@ -24,6 +24,7 @@ if __name__ == "__main__":
 
     file_prefixes = [file for file in os.listdir(args.output_path) if "output" in file]
 
+    os.makedirs("scores", exist_ok=True)
     cumulative_results = []
     condition_results = []
 

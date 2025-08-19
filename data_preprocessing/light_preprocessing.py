@@ -50,7 +50,7 @@ def resample_glucose_data(df, freq="15min", tolerance="7min"):
         start = group.index.min()
         end = group.index.max()
 
-        # Create time grid including always the last timestamp
+        # Create time grid
         expected = pd.date_range(start=start, end=end, freq=freq)
 
         # If the last timestamp is not included in the grid, add it
@@ -188,10 +188,10 @@ def main():
         # Load data
         df_glucose = load_data("data/T1DiabetesGranada/Glucose_measurements.csv")
 
-        # NUOVO: Filtra per top pazienti prima del resampling
+        # LIGHT: Filtra per top pazienti prima del resampling
         df_glucose = filter_top_patients(df_glucose, n_patients=10)
 
-        # NUOVO: Limita timesteps per paziente PRIMA del resampling
+        # LIGHT: Limita timesteps per paziente prima del resampling
         df_glucose = limit_timesteps_per_patient(df_glucose, max_timesteps=2000)
 
         # Resample data

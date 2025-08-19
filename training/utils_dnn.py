@@ -64,10 +64,9 @@ def create_callbacks(
 
 def create_mlp_model():
     """
-    Create MLP model following Chu et al. specifications:
+    MLP model specifications:
     - Input: 8 features (2 hours of glucose history)
     - Architecture: Linear(8->256) -> Tanh + Dropout(0.2) -> Linear(256->256) -> Tanh + Dropout(0.2) -> Linear(256->1)
-    - Parameters: ~69,126
     """
     model = keras.Sequential(
         [
@@ -85,10 +84,9 @@ def create_mlp_model():
 
 def create_lstm_model():
     """
-    Create LSTM model following Chu et al. specifications:
+    LSTM model specifications:
     - Input: 8 timesteps x 1 feature (sequence of glucose values)
     - Architecture: LSTM(1->75, 2 layers, dropout=0.2) -> Linear(75->1)
-    - Parameters: ~69,076
     """
     model = keras.Sequential(
         [
@@ -108,10 +106,9 @@ def create_lstm_model():
 
 def create_gru_model():
     """
-    Create GRU model following Chu et al. specifications:
+    GRU model specifications:
     - Input: 8 timesteps x 1 feature (sequence of glucose values)
     - Architecture: GRU(1->86, 2 layers, dropout=0.2) -> Linear(86->1)
-    - Parameters: ~67,941
     """
     model = keras.Sequential(
         [
@@ -175,8 +172,6 @@ def train_model(
     output_path="outputs",
     exp_name="model",
 ):
-    """Train the model with Chu et al. specifications"""
-
     # Compile model
     optimizer = keras.optimizers.Adam(learning_rate=initial_learning_rate)
     model.compile(optimizer=optimizer, loss=keras.losses.Huber(), metrics=["mae"])

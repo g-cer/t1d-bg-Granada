@@ -6,11 +6,11 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
 
-from training.utils_data import get_data, rescale_data
+from training.utils_data import get_data
 from training.utils_dnn import predict_in_batches
 
-TREE_MODELS = {"xgb", "lgb"}  # consigliato per SHAP tree-explainer
-NN_MODELS = {"mlp", "gru", "lstm"}  # per SHAP deep-explainer
+TREE_MODELS = {"xgb", "lgb"}  # utilizzano shap.Tree-explainer
+NN_MODELS = {"mlp", "gru", "lstm"}  # utilizzano shap.KernelExplainer
 
 
 def load_model(model_name, model_path):
@@ -29,7 +29,7 @@ def create_explainer(model, model_name, X_bg):
     if model_name in TREE_MODELS:
         return shap.TreeExplainer(model, X_bg)
     elif model_name in NN_MODELS:
-        # For neural networks, we need to create a wrapper function
+        # For neural networks, create a wrapper function
         def model_predict(X):
             return predict_in_batches(
                 model, pd.DataFrame(X, columns=X_bg.columns), model_type=model_name
@@ -47,31 +47,20 @@ def main():
     ap.add_argument(
         "--model_name", choices=["xgb", "lgb", "mlp", "gru", "lstm"], required=True
     )
-    ap.add_argument(
-        "--model_path",
-        default=None,
-        help="Path to model file. If not provided, will use outputs/{model_name}.{ext}",
-    )
     ap.add_argument("--n_background", type=int, default=2000)
-    ap.add_argument(
-        "--n_samples",
-        type=int,
-        default=10000,
-        help="Reduced default for neural networks due to computational cost",
-    )
+    ap.add_argument("--n_samples", type=int, default=10000)
     ap.add_argument("--outdir", default="xai_outputs")
     args = ap.parse_args()
 
-    # Set default model path if not provided
-    if args.model_path is None:
-        if args.model_name in TREE_MODELS:
-            args.model_path = f"outputs/{args.model_name}.pickle"
-        elif args.model_name in NN_MODELS:
-            args.model_path = f"outputs/{args.model_name}.keras"
+    # Set model path
+    if args.model_name in TREE_MODELS:
+        args.model_path = f"outputs/{args.model_name}.pickle"
+    elif args.model_name in NN_MODELS:
+        args.model_path = f"outputs/{args.model_name}.keras"
 
     os.makedirs(args.outdir, exist_ok=True)
 
-    # carica dati (stesse finestre/scala dei tuoi training script)
+    # Carica i dati (stesse finestre e scaling dei training script)
     train_set, test_set, X_cols, y_cols = get_data(
         data_path=args.data_path,
         horizons=[0, 15, 30, 45, 60, 75, 90, 105, -30],
@@ -82,11 +71,10 @@ def main():
         scale=True,
     )
 
-    # carica modello
     model = load_model(args.model_name, args.model_path)
     print(f"Loaded {args.model_name} model from {args.model_path}")
 
-    # campioni per SHAP (ridotti per neural networks per velocità)
+    # Campioni per SHAP
     if args.model_name in NN_MODELS:
         # Reduce samples for neural networks due to computational cost
         n_bg = min(args.n_background, 100)
@@ -112,13 +100,12 @@ def main():
         shap_values = explainer.shap_values(X_eval.values)
         if isinstance(shap_values, list):
             shap_values = shap_values[0]  # For multi-output models, take first output
-        # Handle extra dimension for neural networks
-        if len(shap_values.shape) == 3:
+        if len(shap_values.shape) == 3:  # Handle extra dimension for neural networks
             shap_values = shap_values.squeeze(-1)  # Remove last dimension if it's 1
     else:
         shap_values = explainer.shap_values(X_eval)
 
-    # summary plot (salvato a file)
+    # Summary plot
     plt.figure()
     shap.summary_plot(shap_values, X_eval, show=False)
     plt.tight_layout()
@@ -127,7 +114,7 @@ def main():
     )
     plt.close()
 
-    # bar plot importanze medie assolute
+    # Bar plot con importanze medie assolute
     mean_abs = np.abs(shap_values).mean(axis=0)
     imp = pd.Series(mean_abs, index=X_cols).sort_values(ascending=False)
     imp.to_csv(os.path.join(args.outdir, f"{args.model_name}_shap_importances.csv"))
