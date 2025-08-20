@@ -12,7 +12,7 @@ from utils_dnn import *
 
 class CFG:
     l_bound = 40.0
-    u_bound = 500.0
+    u_bound = 400.0
     train_split = list(map(int, np.load("data/patients/train_patients.npy")))
     test_split = list(map(int, np.load("data/patients/test_patients.npy")))
     horizons = [0, 15, 30, 45, 60, 75, 90, 105, -30]  # 8 lag + target lead30
