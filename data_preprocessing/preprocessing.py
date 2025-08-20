@@ -145,6 +145,16 @@ def print_final_statistics(data):
     print("=" * 50)
 
 
+def remove_out_of_range_measurements(df, min_val=40, max_val=400):
+    initial_count = len(df)
+    filtered_df = df[(df["Measurement"] >= min_val) & (df["Measurement"] <= max_val)]
+    removed_count = initial_count - len(filtered_df)
+    print(
+        f"Valori rimossi perché fuori dal range [{min_val}, {max_val}]: {removed_count}"
+    )
+    return filtered_df
+
+
 def main():
     """Main preprocessing pipeline."""
     start_time = time.time()
@@ -154,6 +164,9 @@ def main():
     try:
         # Load data
         df_glucose = load_data("data/T1DiabetesGranada/Glucose_measurements.csv")
+
+        # Rimuovi valori di Measurement fuori dal range [40, 400] e stampa quanti sono stati rimossi
+        df_glucose = remove_out_of_range_measurements(df_glucose)
 
         # Resample data
         resampled_data = resample_glucose_data(df_glucose)

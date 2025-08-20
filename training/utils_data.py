@@ -12,7 +12,7 @@ from sklearn.metrics import (
 HYPO = 70.0
 HYPER = 180.0
 L_BOUND = 40.0
-U_BOUND = 500.0
+U_BOUND = 400.0
 
 
 def shift_feature(cgm, horizon, col_name, shift_tolerance):
