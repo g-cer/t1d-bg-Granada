@@ -1,87 +1,102 @@
 import os
 import argparse
-from utils_data import *
 import pickle
 import lightgbm as lgb
 import xgboost as xgb
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import BaggingRegressor
+from split_data import rescale_data, load_splits, print_results
 
 
-class CFG:
-    l_bound = 40.0
-    u_bound = 400.0
-    train_split = list(map(int, np.load("data/patients/train_patients.npy")))
-    test_split = list(map(int, np.load("data/patients/test_patients.npy")))
-    horizons = [0, 15, 30, 45, 60, 75, 90, 105, -30]  # 8 lag + target lead30
-    output_csv_header = ["Timestamp", "Patient_ID", "bgClass", "target", "y_pred"]
+def parse_arguments():
+    """Parse and validate command line arguments"""
+    parser = argparse.ArgumentParser(
+        description="Train ML models for glucose prediction"
+    )
+    parser.add_argument(
+        "--data_path", default="data", type=str, help="Path to data directory"
+    )
+    parser.add_argument(
+        "--output_path", type=str, default="outputs", help="Output directory"
+    )
+    parser.add_argument(
+        "--exp_name", type=str, choices=["lgb", "xgb"], help="Model name", required=True
+    )
+    parser.add_argument("--seed", type=int, default=42, help="Random seed")
+
+    return parser.parse_args()
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--data_path", default="data", type=str)
-parser.add_argument("--output_path", type=str, default="outputs")
-parser.add_argument("--cache_dir", type=str, default="training/data_cache")
-parser.add_argument("--use_cache", action="store_true", default=True)
-parser.add_argument("--force_rebuild", action="store_true", help="Force rebuild cache")
-parser.add_argument(
-    "--exp_name",
-    type=str,
-    choices=["lgb", "xgb", "fast_rf"],
-    help="Model name. Choose from [lgb, xgb, fast_rf]",
-    required=True,
-)
-parser.add_argument("--seed", type=int, default=42)
+def create_model(model_type, random_state):
+    """Create model based on type"""
+    models = {"lgb": lgb.LGBMRegressor, "xgb": xgb.XGBRegressor}
+
+    if model_type not in models:
+        raise ValueError(f"Unsupported model type: {model_type}")
+
+    return models[model_type](random_state=random_state)
+
+
+def save_model(model, model_path):
+    """Save trained model"""
+    with open(model_path, "wb") as handle:
+        pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    print(f"Model saved to: {model_path}")
+
+
+def evaluate_and_save_results(model, val_set, X_cols, y_cols, output_path, exp_name):
+    """Evaluate model and save results"""
+    # Make predictions
+    val_set = val_set.copy()
+    val_set["y_pred"] = model.predict(val_set[X_cols])
+
+    # Prepare results
+    val_set = val_set.rename(columns={y_cols[-1]: "target"})
+    val_set = rescale_data(val_set, ["target", "y_pred"])
+
+    # Select output columns and save
+    output_columns = ["Timestamp", "Patient_ID", "bgClass", "target", "y_pred"]
+    results = val_set[output_columns]
+
+    print_results(results)
+
+    output_file = f"{output_path}/{exp_name}_output.csv"
+    results.to_csv(output_file, index=False)
+    print(f"Results saved to: {output_file}")
+
+    return results
+
+
+def main():
+    """Main training function"""
+    args = parse_arguments()
+
+    print(f"Starting {args.exp_name.upper()} training pipeline...")
+
+    # Setup
+    os.makedirs(args.output_path, exist_ok=True)
+
+    # Load data
+    print("Loading pre-prepared data splits...")
+    train_set, val_set, test_set, X_cols, y_cols = load_splits()
+
+    # Create and train model
+    print(f"Creating and training {args.exp_name.upper()} model...")
+    model = create_model(args.exp_name, args.seed)
+    model.fit(train_set[X_cols], train_set[y_cols[-1]])
+
+    # Save model
+    model_path = f"{args.output_path}/{args.exp_name}.pickle"
+    save_model(model, model_path)
+
+    print()  # Add spacing
+
+    # Evaluate and save results
+    results = evaluate_and_save_results(
+        model, val_set, X_cols, y_cols, args.output_path, args.exp_name
+    )
+
+    print(f"\nTraining pipeline completed successfully!")
+    return model, results
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
-
-    if not os.path.exists(args.output_path):
-        os.mkdir(args.output_path)
-
-    # Use cache unless force rebuild is requested
-    use_cache = args.use_cache and not args.force_rebuild
-
-    train_set, test_set, X_cols, y_cols = get_data(
-        args.data_path,
-        horizons=CFG.horizons,
-        train_split=CFG.train_split,
-        test_split=CFG.test_split,
-        use_cache=use_cache,
-        cache_dir=args.cache_dir,
-        scale=True,
-    )
-
-    # Train model
-    if args.exp_name == "fast_rf":
-        base = DecisionTreeRegressor(
-            max_depth=16, min_samples_leaf=10, random_state=args.seed
-        )
-        model = BaggingRegressor(
-            estimator=base,
-            n_estimators=200,
-            max_samples=200_000,
-            bootstrap=True,
-            n_jobs=-1,
-            random_state=args.seed,
-        )
-    elif args.exp_name == "lgb":
-        model = lgb.LGBMRegressor(random_state=args.seed)
-    elif args.exp_name == "xgb":
-        model = xgb.XGBRegressor(random_state=args.seed)
-
-    model.fit(train_set[X_cols], train_set[y_cols[-1]])
-    with open(f"{args.output_path}/{args.exp_name}.pickle", "wb") as handle:
-        pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    print("\n")
-
-    # Evaluate
-    test_set["y_pred"] = model.predict(test_set[X_cols])
-    test_set = test_set.rename(columns={y_cols[-1]: "target"})
-    test_set = rescale_data(test_set, ["target", "y_pred"])
-    test_set = test_set[CFG.output_csv_header]
-
-    print_results(test_set)
-
-    test_set.to_csv(f"{args.output_path}/{args.exp_name}_output.csv", index=False)
+    main()
