@@ -274,34 +274,33 @@ def load_splits(splits_dir="training/splits"):
     return tuple(datasets + [metadata["X_cols"], metadata["y_cols"]])
 
 
+def calculate_metrics(df):
+    """Calculate metrics for all patients in subset"""
+    samples = 0
+    maes, mapes, rmses = [], [], []
+
+    for patient_id in df["Patient_ID"].unique():
+        patient_data = df[df["Patient_ID"] == patient_id]
+        if patient_data.empty:
+            continue
+
+        samples += len(patient_data)
+        maes.append(mean_absolute_error(patient_data["target"], patient_data["y_pred"]))
+        mapes.append(
+            mean_absolute_percentage_error(
+                patient_data["target"], patient_data["y_pred"]
+            )
+            * 100
+        )
+        rmses.append(
+            root_mean_squared_error(patient_data["target"], patient_data["y_pred"])
+        )
+
+    return samples, maes, mapes, rmses
+
+
 def print_results(df):
     """Print evaluation results with simplified logic"""
-
-    def calculate_metrics(subset_df):
-        """Calculate metrics for all patients in subset"""
-        samples = 0
-        maes, mapes, rmses = [], [], []
-
-        for patient_id in df["Patient_ID"].unique():
-            patient_data = subset_df[subset_df["Patient_ID"] == patient_id]
-            if patient_data.empty:
-                continue
-
-            samples += len(patient_data)
-            maes.append(
-                mean_absolute_error(patient_data["target"], patient_data["y_pred"])
-            )
-            mapes.append(
-                mean_absolute_percentage_error(
-                    patient_data["target"], patient_data["y_pred"]
-                )
-                * 100
-            )
-            rmses.append(
-                root_mean_squared_error(patient_data["target"], patient_data["y_pred"])
-            )
-
-        return samples, maes, mapes, rmses
 
     def print_metrics(title, samples, maes, mapes, rmses):
         """Print formatted metrics"""
