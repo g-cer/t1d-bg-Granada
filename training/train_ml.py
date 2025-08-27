@@ -4,6 +4,7 @@ import pickle
 import lightgbm as lgb
 import xgboost as xgb
 from split_data import rescale_data, load_splits, print_results
+from cuml.ensemble import RandomForestRegressor
 
 
 def parse_arguments():
@@ -18,7 +19,11 @@ def parse_arguments():
         "--output_path", type=str, default="outputs", help="Output directory"
     )
     parser.add_argument(
-        "--exp_name", type=str, choices=["lgb", "xgb"], help="Model name", required=True
+        "--exp_name",
+        type=str,
+        choices=["lgb", "xgb", "rf"],
+        help="Model name",
+        required=True,
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
 
@@ -27,12 +32,23 @@ def parse_arguments():
 
 def create_model(model_type, random_state):
     """Create model based on type"""
-    models = {"lgb": lgb.LGBMRegressor, "xgb": xgb.XGBRegressor}
-
-    if model_type not in models:
+    if model_type == "lgb":
+        return lgb.LGBMRegressor(
+            random_state=random_state, device="gpu", gpu_platform_id=0, gpu_device_id=0
+        )
+    elif model_type == "xgb":
+        return xgb.XGBRegressor(
+            random_state=random_state,
+            tree_method="hist",
+            device="cuda:0",  # Use first GPU
+            verbosity=1,  # Show GPU info
+        )
+    elif model_type == "rf":
+        return RandomForestRegressor(
+            random_state=random_state, n_estimators=100  # 100 di default
+        )
+    else:
         raise ValueError(f"Unsupported model type: {model_type}")
-
-    return models[model_type](random_state=random_state)
 
 
 def save_model(model, model_path):
