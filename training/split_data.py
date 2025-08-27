@@ -325,7 +325,7 @@ def print_results(df):
 
 
 if __name__ == "__main__":
-    train_set, val_set, test_set, X_cols, y_cols = prepare_data()
+    train_set, val_set, test_set, X_cols, y_cols = prepare_data(scale=True)
 
     save_splits(train_set, val_set, test_set, X_cols, y_cols)
 
