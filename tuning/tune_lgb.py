@@ -45,7 +45,6 @@ def create_lgb_objective_function(train_set, val_set, X_cols, y_cols, base_param
             # Learning parameters
             "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
             "n_estimators": trial.suggest_int("n_estimators", 50, 300),
-            # "n_estimators": trial.suggest_int("n_estimators", 1, 5),
             # Additional parameters for time series
             "min_split_gain": trial.suggest_float("min_split_gain", 0.0, 1.0),
             "min_data_in_leaf": trial.suggest_int("min_data_in_leaf", 5, 50),

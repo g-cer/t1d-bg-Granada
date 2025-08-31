@@ -119,6 +119,7 @@ def create_callbacks(model_save_path, **kwargs):
             patience=config["early_stopping_patience"],
             restore_best_weights=True,
             verbose=1,
+            min_delta=1e-5,
         )
     ]
 

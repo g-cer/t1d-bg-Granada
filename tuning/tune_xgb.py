@@ -38,14 +38,13 @@ def create_xgb_objective_function(train_set, val_set, X_cols, y_cols, base_param
             ),
             "subsample": trial.suggest_float("subsample", 0.6, 1.0),
             "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
-            # Regularization parameters (important for glucose prediction)
+            # Regularization parameters
             "reg_alpha": trial.suggest_float("reg_alpha", 1e-8, 10.0, log=True),
             "reg_lambda": trial.suggest_float("reg_lambda", 1e-8, 10.0, log=True),
             # Learning parameters
             "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
             "n_estimators": trial.suggest_int("n_estimators", 100, 1000),
-            # "n_estimators": trial.suggest_int("n_estimators", 1, 5),
-            # Additional parameters for time series
+            # Additional parameter for time series
             "gamma": trial.suggest_float("gamma", 1e-8, 1.0, log=True),
         }
 
