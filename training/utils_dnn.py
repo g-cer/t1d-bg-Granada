@@ -35,7 +35,7 @@ def create_mlp_model():
             layers.Dense(256, activation="tanh"),
             layers.Dropout(0.2),
             layers.Dense(256, activation="tanh"),
-            layers.Dropout(0),
+            layers.Dropout(0.2),
             layers.Dense(1),
         ],
         name="MLP_Model",
