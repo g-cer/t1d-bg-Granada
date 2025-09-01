@@ -4,6 +4,7 @@ import torch
 from torch import nn
 from torch.utils import data
 from copy import deepcopy
+import os
 
 
 class MLPModel(nn.Module):
@@ -100,25 +101,34 @@ def get_dataloader(train_set, test_set, X_cols, y_cols, model_type, batch_size):
     assert model_type in ["mlp", "lstm", "gru"], "please choose from [mlp/lstm/gru]"
 
     X_train = torch.tensor(train_set[X_cols].values, dtype=torch.float32)
-    y_train = torch.tensor(
-        train_set[y_cols].values, dtype=torch.float32
-    ).squeeze()  # Ensure 1D
+    y_train = torch.tensor(train_set[y_cols].values, dtype=torch.float32).squeeze()
 
     X_test = torch.tensor(test_set[X_cols].values, dtype=torch.float32)
-    y_test = torch.tensor(
-        test_set[y_cols].values, dtype=torch.float32
-    ).squeeze()  # Ensure 1D
+    y_test = torch.tensor(test_set[y_cols].values, dtype=torch.float32).squeeze()
 
     if model_type != "mlp":
-        X_train = X_train.unsqueeze(2)  # (batch_size, 8, 1)
-        X_test = X_test.unsqueeze(2)  # (batch_size, 8, 1)
-        # y_train and y_test remain 1D for RNN models too
+        X_train = X_train.unsqueeze(2)
+        X_test = X_test.unsqueeze(2)
+
+    # Ottimizzazioni DataLoader
+    num_workers = min(os.cpu_count(), 8)  # Limita a max 8 worker
+    pin_memory = torch.cuda.is_available()  # Solo se hai GPU
 
     train_loader = data.DataLoader(
-        data.TensorDataset(X_train, y_train), shuffle=True, batch_size=batch_size
+        data.TensorDataset(X_train, y_train),
+        shuffle=True,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=True if num_workers > 0 else False,
     )
     test_loader = data.DataLoader(
-        data.TensorDataset(X_test, y_test), shuffle=False, batch_size=batch_size
+        data.TensorDataset(X_test, y_test),
+        shuffle=False,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=True if num_workers > 0 else False,
     )
 
     return train_loader, test_loader
