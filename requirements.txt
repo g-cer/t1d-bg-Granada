@@ -9,3 +9,5 @@ shap
 torch
 seaborn
 matplotlib
+optuna
+plotly

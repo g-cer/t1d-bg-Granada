@@ -18,6 +18,12 @@ parser.add_argument(
     default="outputs",
     help="Path to save model results",
 )
+parser.add_argument(
+    "--output_prefix",
+    type=str,
+    default="",
+    help="Prefix for output CSV files (e.g., 'pt_' for PyTorch models)",
+)
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -79,7 +85,9 @@ if __name__ == "__main__":
     cumulative_df = pd.DataFrame(
         cumulative_results, columns=["Model", "MAE", "MAPE", "RMSE"]
     )
-    cumulative_df.to_csv("scores/cumulative_results.csv", index=False)
+    cumulative_df.to_csv(
+        f"scores/{args.output_prefix}cumulative_results.csv", index=False
+    )
 
     condition_df = pd.DataFrame(
         condition_results, columns=["Model", "Condition", "MAE", "MAPE", "RMSE"]
@@ -91,4 +99,6 @@ if __name__ == "__main__":
         f"{metric} ({condition})" for metric, condition in condition_pivot.columns
     ]
     condition_pivot.reset_index(inplace=True)
-    condition_pivot.to_csv("scores/condition_results.csv", index=False)
+    condition_pivot.to_csv(
+        f"scores/{args.output_prefix}condition_results.csv", index=False
+    )
