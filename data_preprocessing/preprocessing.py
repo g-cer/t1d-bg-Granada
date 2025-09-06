@@ -186,7 +186,8 @@ def main():
 
         # Save results
         save_preprocessed_data(
-            preprocessed_data, "data/Glucose_measurements_corrected.csv"
+            preprocessed_data,
+            "data/T1DiabetesGranada/Glucose_measurements_corrected.csv",
         )
 
         # Print final statistics

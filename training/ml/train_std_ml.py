@@ -3,50 +3,32 @@ import argparse
 import pickle
 import lightgbm as lgb
 import xgboost as xgb
-from split_data import rescale_data, load_splits, print_results
-from cuml.ensemble import RandomForestRegressor
+from utils.data import rescale_data, load_splits, print_results
+
+# from cuml.ensemble import RandomForestRegressor
 
 
 def parse_arguments():
     """Parse and validate command line arguments"""
-    parser = argparse.ArgumentParser(
-        description="Train ML models for glucose prediction"
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output_path", type=str, default="outputs/val_set")
+    parser.add_argument("--models_path", type=str, default="models/val_set")
     parser.add_argument(
-        "--data_path", default="data", type=str, help="Path to data directory"
+        "--exp_name", type=str, choices=["lgb", "xgb", "rf"], required=True
     )
-    parser.add_argument(
-        "--output_path", type=str, default="outputs", help="Output directory"
-    )
-    parser.add_argument(
-        "--exp_name",
-        type=str,
-        choices=["lgb", "xgb", "rf"],
-        help="Model name",
-        required=True,
-    )
-    parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--seed", type=int, default=42)
 
     return parser.parse_args()
 
 
-def create_model(model_type, random_state):
+def create_model(model_type, seed):
     """Create model based on type"""
     if model_type == "lgb":
-        return lgb.LGBMRegressor(
-            random_state=random_state, device="gpu", gpu_platform_id=0, gpu_device_id=0
-        )
+        return lgb.LGBMRegressor(random_state=seed, device="gpu")
     elif model_type == "xgb":
-        return xgb.XGBRegressor(
-            random_state=random_state,
-            tree_method="hist",
-            device="cuda:0",  # Use first GPU
-            verbosity=1,  # Show GPU info
-        )
-    elif model_type == "rf":
-        return RandomForestRegressor(
-            random_state=random_state, n_estimators=100  # 100 di default
-        )
+        return xgb.XGBRegressor(random_state=seed, device="cuda:0")
+    # elif model_type == "rf":
+    #     return RandomForestRegressor(random_state=seed)
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
 
@@ -89,6 +71,7 @@ def main():
 
     # Setup
     os.makedirs(args.output_path, exist_ok=True)
+    os.makedirs(args.models_path, exist_ok=True)
 
     # Load data
     print("Loading pre-prepared data splits...")
@@ -100,7 +83,7 @@ def main():
     model.fit(train_set[X_cols], train_set[y_cols[-1]])
 
     # Save model
-    model_path = f"{args.output_path}/{args.exp_name}.pickle"
+    model_path = f"{args.models_path}/{args.exp_name}.pickle"
     save_model(model, model_path)
 
     print()  # Add spacing

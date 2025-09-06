@@ -1,10 +1,8 @@
 .vscode
 __pycache__
 outputs
-splits
 data
 scores
 plots
-xai_outputs
 results
-pt_outputs
+models

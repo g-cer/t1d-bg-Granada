@@ -2,7 +2,7 @@ import os
 import argparse
 import torch
 from torch import optim
-from split_data import load_splits, rescale_data, print_results
+from data_preprocessing.split_data import load_splits, rescale_data, print_results
 from pt_utils_dnn import *
 
 

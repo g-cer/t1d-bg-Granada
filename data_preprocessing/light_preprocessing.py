@@ -189,10 +189,10 @@ def main():
         df_glucose = load_data("data/T1DiabetesGranada/Glucose_measurements.csv")
 
         # LIGHT: Filtra per top pazienti prima del resampling
-        df_glucose = filter_top_patients(df_glucose, n_patients=10)
+        # df_glucose = filter_top_patients(df_glucose, n_patients=10)
 
         # LIGHT: Limita timesteps per paziente prima del resampling
-        df_glucose = limit_timesteps_per_patient(df_glucose, max_timesteps=2000)
+        df_glucose = limit_timesteps_per_patient(df_glucose, max_timesteps=150)
 
         # Resample data
         resampled_data = resample_glucose_data(df_glucose)
@@ -205,15 +205,19 @@ def main():
         ]
 
         # Calculate statistics
-        # patient_stats = calculate_patient_statistics(resampled_data)
+        patient_stats = calculate_patient_statistics(resampled_data)
 
         # Filter patients
-        # preprocessed_data = filter_patients_by_days(df_glucose_resampled, patient_stats)
+        preprocessed_data = filter_patients_by_days(
+            df_glucose_resampled, patient_stats, min_days=1
+        )
+
         preprocessed_data = df_glucose_resampled
 
         # Save results
         save_preprocessed_data(
-            preprocessed_data, "data/Glucose_measurements_corrected.csv"
+            preprocessed_data,
+            "data/T1DiabetesGranada/Glucose_measurements_corrected.csv",
         )
 
         # Print final statistics

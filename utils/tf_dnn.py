@@ -87,6 +87,16 @@ def prepare_data(train_set, val_set, test_set, X_cols, y_cols, model_type):
     if model_type in RNN_MODELS:
         X_arrays = [_reshape_for_rnn(X) for X in X_arrays]
 
+    # Print data information
+    shapes = [
+        (X_arrays[0], y_arrays[0], "train"),
+        (X_arrays[1], y_arrays[1], "val"),
+        (X_arrays[2], y_arrays[2], "test"),
+    ]
+    print("Data shapes:")
+    for X, y, name in shapes:
+        print(f"X_{name}: {X.shape}, y_{name}: {y.shape}")
+
     return tuple(X_arrays + y_arrays)
 
 
@@ -100,26 +110,28 @@ def _reshape_for_rnn(X):
     return X.reshape(X.shape[0], X.shape[1], 1)
 
 
-def create_callbacks(model_save_path, **kwargs):
+def create_callbacks(**kwargs):
     """Create training callbacks with defaults"""
     defaults = {
         "early_stopping_patience": 5,
+        "early_stopping_min_delta": 1e-5,
         "lr_scheduler": True,
         "lr_reduction_factor": 0.1,
         "lr_scheduler_patience": 3,
         "min_learning_rate": 1e-6,
         "monitor": "val_loss",
-        "save_best_model": True,
+        "verbose": 1,
     }
+
     config = {**defaults, **kwargs}
 
     callbacks = [
         keras.callbacks.EarlyStopping(
             monitor=config["monitor"],
             patience=config["early_stopping_patience"],
+            min_delta=config["early_stopping_min_delta"],
+            verbose=config["verbose"],
             restore_best_weights=True,
-            verbose=1,
-            min_delta=1e-5,
         )
     ]
 
@@ -130,19 +142,7 @@ def create_callbacks(model_save_path, **kwargs):
                 factor=config["lr_reduction_factor"],
                 patience=config["lr_scheduler_patience"],
                 min_lr=config["min_learning_rate"],
-                verbose=1,
-            )
-        )
-
-    if config["save_best_model"]:
-        os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
-        callbacks.append(
-            keras.callbacks.ModelCheckpoint(
-                filepath=model_save_path,
-                monitor=config["monitor"],
-                save_best_only=True,
-                save_weights_only=True,
-                verbose=1,
+                verbose=config["verbose"],
             )
         )
 
@@ -156,9 +156,9 @@ def train_model(
     X_val,
     y_val,
     epochs=100,
-    batch_size=32,
+    batch_size=4096,
     initial_learning_rate=0.01,
-    output_path="outputs",
+    models_path="models",
     exp_name="model",
 ):
     """Train model with simplified configuration"""
@@ -169,12 +169,10 @@ def train_model(
         loss=keras.losses.Huber(),
         metrics=["mae"],
         steps_per_execution=256,
-        run_eagerly=False,
     )
 
     # Create callbacks
-    model_save_path = f"{output_path}/{exp_name}.weights.h5"
-    callbacks = create_callbacks(model_save_path)
+    callbacks = create_callbacks()
 
     # Train model
     history = model.fit(
@@ -187,8 +185,12 @@ def train_model(
         verbose=1,
     )
 
-    # Load best weights
-    model.load_weights(model_save_path)
+    # Salva i pesi del miglior modello alla fine del training
+    # (EarlyStopping con restore_best_weights=True già ripristina i migliori pesi)
+    model_save_path = f"{models_path}/{exp_name}.weights.h5"
+    os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
+    model.save_weights(model_save_path)
+    print(f"Best model weights saved to: {model_save_path}")
 
     return model, history
 
@@ -200,7 +202,7 @@ def predict_in_batches(model, data, model_type, batch_size=256):
 
     # Prepare data based on model type
     if model_type in RNN_MODELS:
-        data_reshaped = data.values.reshape(data.shape[0], data.shape[1], 1)
+        data_reshaped = _reshape_for_rnn(data.values)
     else:
         data_reshaped = data.values
 

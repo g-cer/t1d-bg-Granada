@@ -12,25 +12,15 @@ HYPO = 70.0
 HYPER = 180.0
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--output_path",
-    type=str,
-    default="outputs",
-    help="Path to save model results",
-)
-parser.add_argument(
-    "--output_prefix",
-    type=str,
-    default="",
-    help="Prefix for output CSV files (e.g., 'pt_' for PyTorch models)",
-)
+parser.add_argument("--output_path", type=str, default="outputs/val_set")
+parser.add_argument("--scores_path", type=str, default="scores/val_set")
 
 if __name__ == "__main__":
     args = parser.parse_args()
 
     file_prefixes = [file for file in os.listdir(args.output_path) if "output" in file]
 
-    os.makedirs("scores", exist_ok=True)
+    os.makedirs(args.scores_path, exist_ok=True)
     cumulative_results = []
     condition_results = []
 
@@ -85,9 +75,7 @@ if __name__ == "__main__":
     cumulative_df = pd.DataFrame(
         cumulative_results, columns=["Model", "MAE", "MAPE", "RMSE"]
     )
-    cumulative_df.to_csv(
-        f"scores/{args.output_prefix}cumulative_results.csv", index=False
-    )
+    cumulative_df.to_csv(f"{args.scores_path}/cumulative_results.csv", index=False)
 
     condition_df = pd.DataFrame(
         condition_results, columns=["Model", "Condition", "MAE", "MAPE", "RMSE"]
@@ -99,6 +87,4 @@ if __name__ == "__main__":
         f"{metric} ({condition})" for metric, condition in condition_pivot.columns
     ]
     condition_pivot.reset_index(inplace=True)
-    condition_pivot.to_csv(
-        f"scores/{args.output_prefix}condition_results.csv", index=False
-    )
+    condition_pivot.to_csv(f"{args.scores_path}/condition_results.csv", index=False)
